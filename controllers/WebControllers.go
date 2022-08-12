@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -86,13 +87,29 @@ func (controller *WebControllers) AddTask(w http.ResponseWriter, r *http.Request
 		var data = models.UserTasks{}
 		db.First(&data, "user_name=? ", strings.Replace(selectedValue, " ", "", -1))
 
+		var getCodeName = data.CodeUserTask
+		var codeTask = ""
+
+		var dataTask = models.Task{}
+		var dataGetCodeTask = db.First(&dataTask).Order("code_task desc")
+		if (dataGetCodeTask != nil) {
+			codeTask = "T01"
+		} else {
+
+			var prefixOld = dataTask.CodeTask
+			var getOnlyIntPrefixOld = strings.Replace(prefixOld, "TSK", "", -1)
+			var getIncrement, _ = strconv.Atoi(getOnlyIntPrefixOld)
+			getIncrement++
+			codeTask = "TSK" + strconv.Itoa(getIncrement)
+		}
 		//db.Where("user_name = ?", selectedValue).Select("CodeUserTask").Find(&data)
 		//var getSelectedUserTask = data.CodeUserTask
 		//fmt.Println("selected user task : %s", getSelectedUserTask)
 
 		task := models.Task{
+			CodeTask:                codeTask,
 			CodeUserCreateTask:      "0",
-			CodeUserDestinationTask: data.CodeUserTask,
+			CodeUserDestinationTask: getCodeName,
 			Task:                    r.FormValue("taskDetail"),
 			DateDeadLineTask:        r.FormValue("deadLineTask"),
 			StatusTask:              "Create",
