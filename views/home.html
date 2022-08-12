@@ -1,0 +1,36 @@
+{{define "title"}}
+{{end}}
+
+{{define "css"}}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.12.1/css/jquery.dataTables.min.css">
+{{end}}
+
+{{define "script"}}
+<script src="https://cdn.datatables.net/1.12.1/js/jquery.dataTables.min.js"></script>
+
+<script>
+$(document).ready(function(){
+    $('.table').DataTable({})
+})
+</script>
+{{end}}
+
+
+{{define "main"}}
+<h1 class="display-6 mt-5">Task List</h1>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Task</th>
+            <th>Assigner</th>
+            <th>Assign To</th>
+            <th>Deadline</th>
+            <th>Action</th>
+        </tr>
+        <tbody>
+
+        </tbody>
+    </thead>
+</table>
+<a class="btn btn-success" href="/add_task"> <i class="fa-solid fa-plus"></i>Create Task</a>
+{{end}}
