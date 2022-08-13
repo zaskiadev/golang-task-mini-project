@@ -29,8 +29,15 @@ func main() {
 	router.GET("/home", webController.Home)
 	router.GET("/add_task", webController.AddTask)
 	router.POST("/add_task", webController.AddTask)
-	router.GET("/add_comment_task", webController.AddCommentTask)
+	router.GET("/edit_task/:codetask", webController.EditTask)
+	router.POST("/update/:codetask", webController.UpdateTask)
+
+	router.GET("/add_comment_task/", webController.AddCommentTask)
+	router.POST("/add_comment_task", webController.AddCommentTask)
+
 	router.GET("/show_all_comment_task", webController.ShowAllCommentTask)
+
+	router.POST("/done/:codetask", webController.DoneTask)
 
 	log.Fatal(http.ListenAndServe(":6490", router))
 

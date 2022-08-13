@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"github.com/julienschmidt/httprouter"
 	"golang-task-mini-project/models"
 	"gorm.io/driver/sqlite"
@@ -17,31 +18,41 @@ var UserCurrentLogin string = ""
 type WebControllers struct{}
 
 func (controller *WebControllers) Login(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	_, err := gorm.Open(sqlite.Open("databasetask.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("databasetask.db"), &gorm.Config{})
 	if err != nil {
 		panic(err.Error())
 	}
+	if r.Method == "POST" {
+		var userName = r.FormValue("userName")
+		var Password = r.FormValue("password")
 
-	files := []string{
-		"./views/base.html",
-		"./views/login.html",
+		var data = models.UserTasks{}
+		var checkLogin = db.First(&data, "user_name=? and password=?", userName, Password)
+
+		if checkLogin != nil {
+			http.Redirect(w, r, "/home", http.StatusFound)
+		}
+	} else {
+		files := []string{
+			"./views/base.html",
+			"./views/login.html",
+		}
+
+		htmlTemplate, err := template.ParseFiles(files...)
+
+		if err != nil {
+			log.Println(err.Error())
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		//var DataTasks []models.Task
+		//db.Find(&DataTasks)
+		datas := map[string]interface{}{}
+		err = htmlTemplate.ExecuteTemplate(w, "base", datas)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
-
-	htmlTemplate, err := template.ParseFiles(files...)
-
-	if err != nil {
-		log.Println(err.Error())
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	//var DataTasks []models.Task
-	//db.Find(&DataTasks)
-	datas := map[string]interface{}{}
-	err = htmlTemplate.ExecuteTemplate(w, "base", datas)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
 }
 
 func (controller *WebControllers) Home(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
@@ -63,12 +74,27 @@ func (controller *WebControllers) Home(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 	var DataTasks []models.Task
-	db.Find(&DataTasks)
-	datas := map[string]interface{}{
-		"Tasks": DataTasks,
+	type resultnewTask struct {
+		CodeTask            string
+		UserDestinationTask string
+		Task                string
+		DeadlineTask        string
+		StatusTask          string
 	}
+	var result []resultnewTask
+
+	db.Model(&DataTasks).Select("tasks.code_task as CodeTask, " +
+		"user_tasks.user_name as UserDestinationTask, tasks.task as Task, tasks.date_dead_line_task as DeadlineTask, " +
+		"tasks.status_task as StatusTask").Joins("left join user_tasks on tasks.code_user_destination_task = user_tasks.code_user_task").Scan(&result)
+
+	//db.Find(&DataTasks)
+	datas := map[string]interface{}{
+		"Tasks": result,
+	}
+	//println(len(result))
 	err = htmlTemplate.ExecuteTemplate(w, "base", datas)
 	if err != nil {
+		println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
@@ -91,21 +117,25 @@ func (controller *WebControllers) AddTask(w http.ResponseWriter, r *http.Request
 		var codeTask = ""
 
 		var dataTask = models.Task{}
-		var dataGetCodeTask = db.First(&dataTask).Order("code_task desc")
-		if (dataGetCodeTask != nil) {
-			codeTask = "T01"
+		var dataGetCodeTask = db.Order("code_task desc").First(&dataTask)
+		//println(dataGetCodeTask.Get("code_task"))
+		if dataGetCodeTask == nil {
+			codeTask = "TSK1"
 		} else {
 
 			var prefixOld = dataTask.CodeTask
 			var getOnlyIntPrefixOld = strings.Replace(prefixOld, "TSK", "", -1)
+
 			var getIncrement, _ = strconv.Atoi(getOnlyIntPrefixOld)
+			println(getIncrement)
 			getIncrement++
+			println(getIncrement)
 			codeTask = "TSK" + strconv.Itoa(getIncrement)
 		}
 		//db.Where("user_name = ?", selectedValue).Select("CodeUserTask").Find(&data)
 		//var getSelectedUserTask = data.CodeUserTask
 		//fmt.Println("selected user task : %s", getSelectedUserTask)
-
+		println("code taxnya adalah : " + codeTask)
 		task := models.Task{
 			CodeTask:                codeTask,
 			CodeUserCreateTask:      "0",
@@ -158,11 +188,7 @@ func (controller *WebControllers) AddCommentTask(w http.ResponseWriter, r *http.
 
 	files := []string{
 		"./views/base.html",
-		"./views/login.html",
-		"./views/home.html",
-		"./views/add_task.html",
 		"./views/add_comment_task.html",
-		"./views/show_all_comment_task ",
 	}
 
 	htmlTemplate, err := template.ParseFiles(files...)
@@ -212,10 +238,102 @@ func (controller *WebControllers) ShowAllCommentTask(w http.ResponseWriter, r *h
 		"Tasks": ds,
 	}
 
-	println(datas)
+	//println(datas)
 	err = htmlTemplate.ExecuteTemplate(w, "base", datas)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+
+}
+
+func (controller *WebControllers) EditTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	db, err := gorm.Open(sqlite.Open("databasetask.db"), &gorm.Config{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	files := []string{
+		"./views/base.html",
+		"./views/edit_task.html",
+	}
+
+	htmlTemplate, err := template.ParseFiles(files...)
+
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	/*var ds []models.Task
+	db.Find(&ds)
+	datas := map[string]interface{}{
+		"Tasks": ds,
+	}*/
+	var task models.Task
+	db.Where("code_task =?", params.ByName("codetask")).Find(&task)
+
+	var user []models.UserTasks
+	db.Find(&user)
+
+	datas := map[string]interface{}{
+		"Tasks": task,
+		"User":  user,
+	}
+
+	//println(datas)
+	fmt.Print(datas)
+	err = htmlTemplate.ExecuteTemplate(w, "base", datas)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+}
+
+func (controller *WebControllers) UpdateTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	db, err := gorm.Open(sqlite.Open("databasetask.db"), &gorm.Config{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	var selectedValue = r.FormValue("dataUserTaskTo")
+	var data = models.UserTasks{}
+	db.First(&data, "user_name=? ", strings.Replace(selectedValue, " ", "", -1))
+
+	var getCodeName = data.CodeUserTask
+	var taskCode = params.ByName("codetask")
+	var task models.Task
+	db.Where("code_task =?", taskCode).First(&task)
+
+	task.Task = r.FormValue("taskDetail")
+	task.DateDeadLineTask = r.FormValue("deadLineTask")
+	task.CodeUserDestinationTask = getCodeName
+	db.Save(&task)
+
+	http.Redirect(w, r, "/home", http.StatusFound)
+	/*var ds []models.Task
+	db.Find(&ds)
+	datas := map[string]interface{}{
+		"Tasks": ds,
+	}*/
+
+}
+
+func (controller *WebControllers) DoneTask(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	db, err := gorm.Open(sqlite.Open("databasetask.db"), &gorm.Config{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	var taskCode = params.ByName("codetask")
+	var task models.Task
+
+	println(taskCode)
+	db.Where("code_task =?", taskCode).First(&task)
+
+	task.StatusTask = "Done"
+
+	db.Save(&task)
+
+	http.Redirect(w, r, "/home", http.StatusFound)
 
 }
